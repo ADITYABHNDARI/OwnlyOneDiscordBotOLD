@@ -4,6 +4,7 @@ module.exports = {
     // aliases: ['delete', 'remove'],
     description: 'Reloads a Command',
     usage: '<Command which to Reload>',
+    args: true,
     category: 'temporary'
   },
   execute (message, args) {
@@ -12,10 +13,11 @@ module.exports = {
     }
     if (!args.length) return message.channel.send(`You didn't pass any command to reload, ${message.author}!`);
     const commandName = args[0].toLowerCase();
-    const command = message.client.commands.get(commandName)
-      || message.client.commands.find(cmd => cmd.aliases && cmd.aliases.includes(commandName));
+    let command = message.client.commands.get(commandName)
+      || message.client.commands.find(cmd => cmd.config.aliases && cmd.config.aliases.includes(commandName));
 
     if (!command) return message.channel.send(`There is no command with name or alias \`${commandName}\`, ${message.author}!`);
+    command = command.config;
 
     delete require.cache[require.resolve(`./${command.name}.js`)];
 

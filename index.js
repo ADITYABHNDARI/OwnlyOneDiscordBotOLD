@@ -5,7 +5,7 @@ const { prefix, token } = require('./config.json');
 
 const bot = new Client();
 bot.commands = new Collection();
-
+bot.SERVERS = new Collection();
 
 const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
 
@@ -17,14 +17,14 @@ for (const file of commandFiles) {
 const cooldowns = new Collection();
 
 bot.once('ready', () => {
-  console.log('I\'m Online!');
+  console.log('\n\nI\'m Online!');
   // bot.user.emoji('😝');
-  bot.user.setActivity('Basant!', { type: 'LISTENING' })
+  bot.user.setActivity('with Feelings!', { type: 'PLAYING' })
     .catch(console.error);
 });
 
 bot.on('guildMemberAdd', memberAdd);
-bot.on('guildMemberRemove', memberLeave);
+// bot.on('guildMemberRemove', memberLeave);
 
 bot.on('message', message => {
   if (!message.content.startsWith(prefix) || message.author.bot) return;
@@ -39,10 +39,12 @@ bot.on('message', message => {
   }
 
   const command = bot.commands.get(commandName) || bot.commands.find(cmd => cmd.config.aliases && cmd.config.aliases.includes(commandName));
-  if (!command) return;
-
-  if (command.config.args && !args.length) {
-    return message.channel.send(`You didn't provide any arguments, ${message.author}!`);
+  if (!command) return message.reply(`that command either doesn't exist or may be incorrect!`);
+  else if (command.config.disabled) {
+    return message.reply(`that command is currently disabled, atm`);
+  }
+  else if (command.config.args && !args.length) {
+    return message.reply(`you didn't provide any arguments!`);
   }
 
   // Cooldowns

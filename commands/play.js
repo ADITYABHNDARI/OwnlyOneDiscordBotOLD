@@ -1,244 +1,52 @@
-const ytdl = require('ytdl-core');
-const { MessageEmbed } = require('discord.js');
+
+/**
+ * Check Permission
+ * @param
+ * tum mile
+ * excuse me too plz
+ * mai agar kahu
+ * mai hu na
+ * meri duniya
+ * mere hath mei
+ * chand sifarish
+ * pehli nazar me
+ * tenu leke mai jawanga
+ * badal me paon hai
+ * kal ho naa ho
+ * tauba
+ * sach kehe raha deawana
+*/
+() => 0;
+const { showOnConsole } = require('./../Utilities.js');
+const MusicPlayer = require('./../classes/MusicPlayer.js');
+const ReactionButton = require('./../classes/ReactionButton.js');
+const { youtubeAPIKey } = require('./../config.json');
+
 const YouTube = require("discord-youtube-api");
+const youtube = new YouTube(youtubeAPIKey);
 
-const youtube = new YouTube("AIzaSyB070H-hAFt9bOlIxvL8vB3fFE_Mj1Hc5E");
+/*#region <REGION NAME>
 
-const musicEmoji = {
-  play: '▶️',
-  pause: '⏸️',
-  stop: '⏹️',
-  record: '⏺️',
-  playPause: '⏯️',
-  previousTrack: '⏮️',
-  nextTrack: '⏭️',
-  rewind: '⏪',
-  fastForward: '⏩',
-  shuffle: '🔀',
-  repeat: '🔁',
-  repeatOne: '🔂',
-  loop: '🔄',
-  note: '🎵',
-  notes: '🎶'
-}
-
-const SERVERS = new Map();
-
-class Player {
-  constructor(serverID, textChannel, voiceChannel) {
-    this.serverID = serverID;
-    this.textChannel = textChannel;
-    this.voiceChannel = voiceChannel;
-    this.voiceConnection = null;
-    this.currentSongIndex = 0;
-    this.sign = 0;
-    this.playlist = [];
-    this.volume = 1;
-    this.isPlaying = false;
-    this.toRepeat = false;
-    this.embed = null;
-    this.logger = null;
-    this.reactionController = null;
-    // this.reactionCollector = createReactionCollector();
-    this.dispatcher = null;
-  }
-
-  getNextSong () {
-    if (this.sign == 0) {
-      if (this.toRepeat) {
-
-      } else {
-        this.currentSongIndex++;
-      }
-    } else {
-      this.currentSongIndex += this.sign;
-      this.sign = 0;
-    }
-    this.currentSongIndex = (this.currentSongIndex + this.playlist.length) % this.playlist.length;
-    return this.playlist[this.currentSongIndex];
-  }
-  get username () {
-    return this.reactionController.user.username;
-  }
-
-  get playbackPosition () {
-    return Math.round(this.dispatcher.streamTime / 1000);
-  }
-
-  log (log) {
-    this.logger.edit(`\`\`\`${log}\`\`\``);
-  }
-  playbackLog (event) {
-    this.log(`${event}, by "${this.username}"`);
-  }
-
-  play (songToPlay) {
-    if (!songToPlay) return SERVERS.delete(this.serverID);
-
-    this.embed.edit(songToPlay.getEmbed());
-    this.dispatcher = this.voiceConnection
-      .play(ytdl(songToPlay.url, { filter: 'audioonly' }), { seek: 0 })
-      .on('finish', () => {
-        this.play(this.getNextSong());
-      })
-      .on('error', console.error);
-
-    this.dispatcher.setVolumeLogarithmic(this.volume);
-  }
-
-  toggleRepeat () {
-    this.toRepeat = !this.toRepeat;
-    this.log(`Repeat Mode set to ${this.toRepeat ? 'ON' : 'OFF'} by ${this.username}`);
-  }
-
-  previous () {
-    this.sign = -1;
-    this.dispatcher.end();
-    this.playbackLog('SKIPPED');
-  }
-
-  rewind () {
-
-  }
-
-  pauseResume () {
-    if (this.dispatcher.paused) {
-      this.dispatcher.resume();
-      this.embed.edit(this.embed.embeds[0].setColor('#00ff00'));
-      this.playbackLog('RESUMED');
-    } else {
-      this.dispatcher.pause();
-      console.log('Paused at :', this.dispatcher.streamTime);
-      this.embed.edit(this.embed.embeds[0].setColor('#ffff00'));
-      this.playbackLog('PAUSED');
-    }
-  }
-
-  fastForward () {
-
-  }
-
-  next () {
-    this.sign = 1;
-    this.dispatcher.end();
-    this.playbackLog('SKIPPED');
-  }
-
-  stop () {
-    this.reactionController.collector.stop();
-    this.playlist = [];
-    this.dispatcher.end();
-    this.embed.edit(this.embed.embeds[0].setColor('#ff2222'));
-    this.playbackLog('STOPPED');
-  }
-}
+< You can put any type of code in here - some lines of code, functions or single or multi - line comments.
+#endregion*/
 
 class Song {
-  constructor({ title, url, durationSeconds, thumbnail }, addedBy) {
+  constructor({ title, url, length, thumbnail }, addedBy) {
     this.title = title;
     this.url = url;
-    this.duration = durationSeconds;
+    this.duration = length;
     this.thumbnail = thumbnail;
     this.addedBy = addedBy;
+    this.stream = null;
   }
-  getEmbed () {
-    return new MessageEmbed()
-      .setColor('#00ff00')
+  setEmbed (embed) {
+    return embed
+      // .setFooter(`Added By: ${this.addedBy.username} | Repeat: ${repeat} | Duration: ${this.duration}`, this.addedBy.displayAvatarURL({ format: "png", dynamic: true }))
       .setTitle(this.title)
       .setURL(this.url)
-      .setAuthor('🎵 Now Playing...')
       .setThumbnail(this.thumbnail)
-      // .setImage(song.thumbnail)
-      .setFooter(`Added By: ${this.addedBy.username}`, this.addedBy.displayAvatarURL({ format: "png", dynamic: true }));
-  }
-}
-
-class ReactionController {
-  constructor(player) {
-    this.player = player;
-    this.embed = player.embed;
-    this.user = null;
-    this.cooldown = {
-      time: 2500,
-      isRunning: false,
-      start () {
-        clearTimeout(this.isRunning);
-        this.isRunning = setTimeout(() => this.stop(), this.time);
-      },
-      stop () {
-        this.isRunning = false;
-      }
-    };
-    this.addReactionButtons();
-    this.collector = this.embed.createReactionCollector((reaction, user) => this.filterReactions(reaction, user));
-    this.collector.on('collect', (reaction, user) => this.onReaction(reaction, user));
-    this.collector.on('end', () => {
-      this.player.embed.reactions.removeAll();
-    });
-  }
-
-  addReactionButtons () {
-    // await this.embed.react(musicEmoji.notes);
-    // await this.embed.react(musicEmoji.repeat);
-    // await this.embed.react(musicEmoji.previousTrack);
-    // await this.embed.react(musicEmoji.playPause);
-    // await this.embed.react(musicEmoji.nextTrack);
-    // await this.embed.react(musicEmoji.stop);
-
-    this.embed.react(musicEmoji.notes)
-      .then(() => this.embed.react(musicEmoji.repeat))
-      .then(() => this.embed.react(musicEmoji.previousTrack))
-      // .then(() => this.embed.react(musicEmoji.rewind))
-      .then(() => this.embed.react(musicEmoji.playPause))
-      // .then(() => this.embed.react(musicEmoji.fastForward))
-      .then(() => this.embed.react(musicEmoji.nextTrack))
-      .then(() => this.embed.react(musicEmoji.stop));
-  }
-
-  filterReactions (reaction, user) {
-    if (user.bot) return false;
-    reaction.users.remove(user);
-
-    const voiceChannel = reaction.message.member.voice.channel;
-    const member = voiceChannel.members.get(user.id);
-    if (!member) {
-      this.player.log(`${user.username} tried to mess with the player! 😆`);
-      return false;
-    }
-
-    return !this.cooldown.isRunning && Object.values(musicEmoji).includes(reaction.emoji.name);
-  }
-
-  onReaction (reaction, user) {
-    this.user = user;
-    this.cooldown.start();
-    switch (reaction.emoji.name) {
-      case musicEmoji.playPause:
-        this.player.pauseResume();
-        break;
-      case musicEmoji.nextTrack:
-        this.player.next();
-        break;
-      case musicEmoji.previousTrack:
-        this.player.previous();
-        break;
-      case musicEmoji.fastForward:
-        this.player.fastForward();
-        break;
-      case musicEmoji.rewind:
-        this.player.rewind();
-        break;
-      case musicEmoji.stop:
-        this.player.stop();
-        break;
-      case musicEmoji.repeat:
-        this.player.toggleRepeat();
-        break;
-      case musicEmoji.notes:
-        const queueList = this.player.playlist.map((song, i) => `${i + 1}.  ${song.title}`);
-        this.player.log(queueList.join('\n'));
-        break;
-    }
+    // .setAuthor('🎵 Now Playing...')
+    // .setImage(song.thumbnail)
   }
 }
 
@@ -246,8 +54,10 @@ module.exports = {
   config: {
     name: 'play',
     aliases: ['p'],
-    description: 'Starts or Resumes a song.',
-    cooldown: 5,
+    description: 'Starts playing a song from YouTube.',
+    usage: '<song-name>',
+    args: true,
+    cooldown: 4,
     category: 'music'
   },
   async execute (message, args) {
@@ -259,42 +69,44 @@ module.exports = {
     }
 
     try {
-      const searchedVideo = await youtube.searchVideos(`"${args.join(' ')}", music`);
+      const searchedVideo = await youtube.searchVideos(`${args.join(' ')}, music`);
       var song = new Song(searchedVideo, message.author);
-    } catch (error) { }
+    } catch (error) {
+      showOnConsole('Searching:', error, 'error');
+    }
+    message.delete();
 
-    let player = SERVERS.get(message.guild.id);
+    let player = message.client.SERVERS.get(message.guild.id);
 
-    if (!player) {
-      player = new Player(message.guild.id, message.channel, voiceChannel);
-      player.playlist.push(song);
-      SERVERS.set(message.guild.id, player);
+    if (player) return player.addSong(song);
 
-      try {
-        player.voiceConnection = await voiceChannel.join();
-        player.embed = await player.textChannel.send('Starting...');
-        player.logger = await player.textChannel.send('```Song Playing!```');
-      } catch (err) {
-        console.error(err);
-        SERVERS.delete(message.guild.id);
-        return message.channel.send(err);
-      }
+    player = new MusicPlayer(message.guild.id, message.channel, voiceChannel);
 
-      player.voiceConnection.on('disconnect', () => {
-        player.stop();
-        player.log('The queue has been deleted!');
-      });
-
-      player.play(player.playlist[0]);
-      player.reactionController = new ReactionController(player);
-      // console.log(player);
-      // player.reactionController.addReactionButtons();
-    } else {
-      player.playlist.push(song);
-      message.delete();
-      player.log(message.author.username + 'added a new song to the queue!');
+    try {
+      player.voiceConnection = await voiceChannel.join();
+      player.DJ = await player.textChannel.send(player.embed.setTitle('Starting!'));
+    } catch (err) {
+      showOnConsole('VC Join:', err, 'error');
+      return message.channel.send(err);
     }
 
-    return;
+    message.client.SERVERS.set(message.guild.id, player);
+
+    player.voiceConnection.on('disconnect', () => {
+      player.close();
+      // player.log('The queue has been deleted!');
+    });
+
+    player.addSong(song);
+    const emojies = new Map()
+      .set('🇶', () => player.showQueue())
+      .set('🔁', () => player.toggleRepeat())
+      .set('⏮️', () => player.previous())
+      .set('⏯️', () => player.pauseResume())
+      .set('⏭️', () => player.next())
+      .set('🗑️', () => player.removeSong())
+      .set('🛑', () => player.close());
+
+    player.reactionController = new ReactionButton(player.DJ, emojies, () => true);
   }
 };

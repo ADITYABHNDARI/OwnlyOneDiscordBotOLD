@@ -3,7 +3,7 @@ const { prefix } = require('../config.json');
 module.exports = {
   config: {
     name: 'help',
-    aliases: ['commands, cmd, h'],
+    aliases: ['commands', 'cmd', 'h'],
     description: '',
     category: 'miscellaneous'
   },
