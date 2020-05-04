@@ -1,21 +1,9 @@
+const Cooldown = require('./Cooldown.js');
+
 const options = {
   sequence: false,
   cooldown: 3
 };
-
-class Cooldown {
-  constructor(time) {
-    this.duration = time * 1000;
-    this.isRunning = false;
-  }
-  start () {
-    clearTimeout(this.isRunning);
-    this.isRunning = setTimeout(() => this.stop(), this.duration);
-  }
-  stop () {
-    this.isRunning = false;
-  }
-}
 
 class ReactionButton {
   constructor(message, emojies, filter) {

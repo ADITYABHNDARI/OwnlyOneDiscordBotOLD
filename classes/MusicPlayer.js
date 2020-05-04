@@ -23,9 +23,10 @@ class MusicPlayer {
     this.currentSongIndex = -1;
     this.hasSkipped = false;
     this.playlist = [];
-    this.isPlaying = null;
+    this.isStopped = true;
     this.repeatMode = 'OFF';
     this.dispatcher = null;
+    this.status = null;
   }
   getBitrate () {
     const vcBitrate = this.voiceChannel.bitrate;
@@ -50,13 +51,19 @@ class MusicPlayer {
     return Math.round(this.dispatcher.streamTime / 1000);
   }
 
+  /**
+   * @private method
+   * @returns Object
+   */
   getNextSong () {
-    if (this.hasSkipped) {
+    if (this.hasSkipped || this.repeatMode != 'ONE') {
       this.hasSkipped = false;
-    } else if (this.repeatMode == 'ONE') this.currentSongIndex--;
+      this.currentSongIndex++;
+    }
 
     if (this.currentSongIndex >= this.playlist.length) {
-      this.currentSongIndex = this.repeatMode == 'ALL' ? 0 : -1;
+      this.currentSongIndex = 0;
+      if (this.repeatMode == 'OFF') return;
     } else if (this.currentSongIndex < 0) {
       this.currentSongIndex = this.playlist.length - 1;
     }
@@ -72,56 +79,44 @@ class MusicPlayer {
   }
 
   addSong (song) {
-    if (!this.isPlaying) {
-      this.play(song);
-      this.currentSongIndex++;
-    }
     this.playlist.push(song);
-    // this.log(${song.title.slice(0, 32)}`);
+    if (this.isStopped) {
+      this.currentSongIndex++;
+      this.play(song);
+    }
     this.embed.setAuthor(`${song.addedBy.username} added a new Song!`)
     this.showQueue();
-    // this.DJ.edit(this.embed.setDescription(this.songs));
   }
 
   /**
    * Plays the song!
-   * @param {Object} songToPlay - An object having song information
+   * @param {Object} song - An object having song information
   */
-  async play (songToPlay) {
-    if (!songToPlay) {
+  async play (song) {
+    if (!song) {
       this.embed.setColor(COLOR.PAUSE);
       return this.log('Queue finished!');
     }
 
-    if (!songToPlay.stream) {
-      try {
-        songToPlay.stream = await ytdl(songToPlay.url, { highWaterMark: 1 << 8, bitrate: this.getBitrate() });
-      } catch (error) {
-        return showOnConsole('Stream Error: ', error, 'error');
-      }
-    }
-    this.dispatcher = null;
+    const stream = await ytdl(song.url, { highWaterMark: 1 << 16, bitrate: this.getBitrate() });
     this.dispatcher = this.voiceConnection
-      .play(songToPlay.stream, { type: 'opus', volume: false/* , highWaterMark: 1 << 16 */ })
+      .play(stream, { type: 'opus', fec: true, seek: 18000, volume: false/* , highWaterMark: 1 << 16 */ })
       .on('start', () => {
-        this.isPlaying = true;
-        if (this.isPaused) {
-          this.resume();
-        }
+        this.isStopped = false;
+        this.status = 'PLAYING';
+        this.embed.setColor(COLOR.PLAYING);
       })
       .on('finish', () => {
-        this.isPlaying = false;
-        this.currentSongIndex++;
-        // setTimeout(() => this.play(this.getNextSong()), 1000);
+        this.isStopped = true;
+        this.status = 'STOPPED';
         this.play(this.getNextSong());
-        // setTimeout(() => console.log('the stream is paused: ', this.dispatcher.paused), 4000);
       })
       .on('debug', info => showOnConsole('Dispatcher Info:', info, 'info'))
       .on('error', err => showOnConsole('Dispatcher Error:', err, 'error'));
 
     this.dispatcher.setVolumeLogarithmic(this.volume);
     // this.dispatcher.setFEC(true);
-    this.DJ.edit(songToPlay.setEmbed(this.embed).setFooter(`Added By: ${songToPlay.addedBy.username} | Repeat: ${this.repeatMode} | Duration: ${songToPlay.duration}`, songToPlay.addedBy.displayAvatarURL({ format: 'jpg', dynamic: true })));
+    this.DJ.edit(song.setEmbed(this.embed).setFooter(`Added By: ${song.addedBy.username} | Repeat: ${this.repeatMode} | Duration: ${song.length}`, song.addedBy.displayAvatarURL({ format: 'jpg', dynamic: true })));
   }
 
   toggleRepeat () {
@@ -141,25 +136,32 @@ class MusicPlayer {
   }
 
   rewind () {
-
+    this.dispatcher.seek()
   }
 
   pauseResume () {
-    if (!this.isPlaying) {
-      this.play(this.playlist[this.currentSongIndex]);
-      return;
-    }
     this[this.isPaused ? 'resume' : 'pause']();
   }
 
   pause () {
-    this.dispatcher.pause();
+    let temp = '';
+    if (this.isStopped) {
+      this.embed.setColor(COLOR.PLAYING);
+      this.play(this.playlist[this.currentSongIndex]);
+      temp = 'Replaying'
+      this.status = 'PLAYING';
+    } else {
+      temp = 'Paused'
+      this.dispatcher.pause();
+      this.embed.setColor(COLOR.PAUSE);
+      this.status = 'PAUSED';
+    }
     // console.log('Paused at :', this.dispatcher.streamTime);
-    this.embed.setColor(COLOR.PAUSE);
-    this.playbackLog('Paused');
+    this.playbackLog(temp);
   }
 
   resume () {
+    this.status = 'PLAYING'
     this.dispatcher.resume();
     this.embed.setColor(COLOR.PLAYING);
     this.playbackLog('Resumed');
@@ -169,9 +171,14 @@ class MusicPlayer {
 
   }
 
-  next () {
+  next (v = 0) {
     this.hasSkipped = true;
-    this.dispatcher.end();
+    if (this.isStopped) {
+      this.currentSongIndex += v;
+      this.play(this.playlist[this.currentSongIndex]);
+    } else {
+      this.dispatcher.end();
+    }
     this.playbackLog('Skipped');
   }
 

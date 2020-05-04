@@ -1,52 +1,24 @@
-
-/**
- * Check Permission
- * @param
- * tum mile
- * excuse me too plz
- * mai agar kahu
- * mai hu na
- * meri duniya
- * mere hath mei
- * chand sifarish
- * pehli nazar me
- * tenu leke mai jawanga
- * badal me paon hai
- * kal ho naa ho
- * tauba
- * sach kehe raha deawana
-*/
-() => 0;
+require('dotenv').config();
 const { showOnConsole } = require('./../Utilities.js');
 const MusicPlayer = require('./../classes/MusicPlayer.js');
 const ReactionButton = require('./../classes/ReactionButton.js');
-const { youtubeAPIKey } = require('./../config.json');
 
 const YouTube = require("discord-youtube-api");
-const youtube = new YouTube(youtubeAPIKey);
-
-/*#region <REGION NAME>
-
-< You can put any type of code in here - some lines of code, functions or single or multi - line comments.
-#endregion*/
+const youtube = new YouTube(process.env.YOUTUBE_API_KEY);
 
 class Song {
   constructor({ title, url, length, thumbnail }, addedBy) {
     this.title = title;
     this.url = url;
-    this.duration = length;
+    this.length = length;
     this.thumbnail = thumbnail;
     this.addedBy = addedBy;
-    this.stream = null;
   }
   setEmbed (embed) {
     return embed
-      // .setFooter(`Added By: ${this.addedBy.username} | Repeat: ${repeat} | Duration: ${this.duration}`, this.addedBy.displayAvatarURL({ format: "png", dynamic: true }))
       .setTitle(this.title)
       .setURL(this.url)
       .setThumbnail(this.thumbnail)
-    // .setAuthor('🎵 Now Playing...')
-    // .setImage(song.thumbnail)
   }
 }
 
@@ -54,6 +26,7 @@ module.exports = {
   config: {
     name: 'play',
     aliases: ['p'],
+    permissions: ['CONNECT', 'SPEAK'],
     description: 'Starts playing a song from YouTube.',
     usage: '<song-name>',
     args: true,
@@ -65,39 +38,47 @@ module.exports = {
     if (!voiceChannel) {
       return message.reply('Lol! You forgot to join a Voice Channel.');
     } else if (message.guild.voiceConnection) {
-      return message.reply('I\'m already in a Voice Channel!');
+      return message.reply('I\'m already being used in a Voice Channel!');
     }
 
-    try {
-      const searchedVideo = await youtube.searchVideos(`${args.join(' ')}, music`);
-      var song = new Song(searchedVideo, message.author);
-    } catch (error) {
-      showOnConsole('Searching:', error, 'error');
-    }
-    message.delete();
-
+    const searchSong = query => new Promise((resolve, reject) => {
+      youtube.searchVideos(`${query}, music`)
+        .then(video => {
+          resolve(new Song(video, message.author));
+          message.delete();
+        })
+        .catch(reject);
+    });
     let player = message.client.SERVERS.get(message.guild.id);
-
-    if (player) return player.addSong(song);
+    if (args[0] == 'db') return console.log(player.currentSongIndex);
+    if (player) {
+      if (!isNaN(args[0])) {
+        player.currentSongIndex = args[0] - 2;
+        player.next(1);
+      } else {
+        searchSong(args.join(' '))
+          .then(song => player.addSong(song))
+          .catch(err => showOnConsole('Searching Error:', err, 'error'));
+      }
+      return;
+    }
 
     player = new MusicPlayer(message.guild.id, message.channel, voiceChannel);
-
     try {
-      player.voiceConnection = await voiceChannel.join();
       player.DJ = await player.textChannel.send(player.embed.setTitle('Starting!'));
+      player.voiceConnection = await voiceChannel.join();
     } catch (err) {
       showOnConsole('VC Join:', err, 'error');
       return message.channel.send(err);
     }
 
-    message.client.SERVERS.set(message.guild.id, player);
+    searchSong(args.join(' '))
+      .then(song => player.addSong(song))
+      .catch(err => showOnConsole('Searching Error:', err, 'error'));
 
-    player.voiceConnection.on('disconnect', () => {
-      player.close();
-      // player.log('The queue has been deleted!');
-    });
+    player.voiceConnection.on('disconnect', () => player.close());
+    player.voiceConnection.on('reconnecting', () => console.log('Iam vc reconnetn'));
 
-    player.addSong(song);
     const emojies = new Map()
       .set('🇶', () => player.showQueue())
       .set('🔁', () => player.toggleRepeat())
@@ -108,5 +89,6 @@ module.exports = {
       .set('🛑', () => player.close());
 
     player.reactionController = new ReactionButton(player.DJ, emojies, () => true);
+    message.client.SERVERS.set(message.guild.id, player);
   }
 };
