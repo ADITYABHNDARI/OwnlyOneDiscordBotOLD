@@ -3,7 +3,7 @@ const fs = require('fs');
 const { memberAdd } = require('./guildMember/member.js');
 const { Client, Collection } = require('discord.js');
 const Cooldown = require('./classes/Cooldown.js');
-const prefix = process.env.BOT_PREFIX;
+const { prefix } = require('../config.json');
 
 const bot = new Client();
 bot.commands = new Collection();
