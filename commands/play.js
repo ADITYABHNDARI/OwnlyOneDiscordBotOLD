@@ -1,4 +1,4 @@
-require('dotenv').config();
+// require('dotenv').config();
 const { showOnConsole } = require('./../Utilities.js');
 const MusicPlayer = require('./../classes/MusicPlayer.js');
 const ReactionButton = require('./../classes/ReactionButton.js');
