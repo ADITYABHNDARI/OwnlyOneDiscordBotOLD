@@ -1,4 +1,3 @@
-require('dotenv').config();
 const fs = require('fs');
 const { memberAdd } = require('./guildMember/member.js');
 const { Client, Collection } = require('discord.js');
