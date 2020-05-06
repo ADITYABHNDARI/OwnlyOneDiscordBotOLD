@@ -1,4 +1,4 @@
-// require('dotenv').config();
+require('dotenv').config();
 const { showOnConsole } = require('./../Utilities.js');
 const MusicPlayer = require('./../classes/MusicPlayer.js');
 const ReactionButton = require('./../classes/ReactionButton.js');
@@ -28,7 +28,7 @@ module.exports = {
     aliases: ['p'],
     permissions: ['CONNECT', 'SPEAK'],
     description: 'Starts playing a song from YouTube.',
-    usage: '<song-name>',
+    usage: '<song-name> | <song-number-in-queue>',
     args: true,
     cooldown: 4,
     category: 'music'
@@ -50,7 +50,7 @@ module.exports = {
         .catch(reject);
     });
     let player = message.client.SERVERS.get(message.guild.id);
-    if (args[0] == 'db') return console.log(player.currentSongIndex);
+
     if (player) {
       if (!isNaN(args[0])) {
         player.currentSongIndex = args[0] - 2;
@@ -58,9 +58,13 @@ module.exports = {
       } else {
         searchSong(args.join(' '))
           .then(song => player.addSong(song))
-          .catch(err => showOnConsole('Searching Error:', err, 'error'));
+          .catch(err => showOnConsole('Searching Error:', err));
       }
       return;
+    }
+
+    if (!message.guild.me.hasPermission(this.config.permissions)) {
+      return message.reply('I don\'t have permissions to Join and Speak in your Voice Channel.');
     }
 
     player = new MusicPlayer(message.guild.id, message.channel, voiceChannel);
@@ -68,27 +72,29 @@ module.exports = {
       player.DJ = await player.textChannel.send(player.embed.setTitle('Starting!'));
       player.voiceConnection = await voiceChannel.join();
     } catch (err) {
-      showOnConsole('VC Join:', err, 'error');
+      showOnConsole('VC Join:', err);
       return message.channel.send(err);
     }
 
     searchSong(args.join(' '))
       .then(song => player.addSong(song))
-      .catch(err => showOnConsole('Searching Error:', err, 'error'));
+      .catch(err => showOnConsole('Searching Error:', err));
 
     player.voiceConnection.on('disconnect', () => player.close());
     player.voiceConnection.on('reconnecting', () => console.log('Iam vc reconnetn'));
 
-    const emojies = new Map()
-      .set('🇶', () => player.showQueue())
-      .set('🔁', () => player.toggleRepeat())
-      .set('⏮️', () => player.previous())
-      .set('⏯️', () => player.pauseResume())
-      .set('⏭️', () => player.next())
-      .set('🗑️', () => player.removeSong())
-      .set('🛑', () => player.close());
-
-    player.reactionController = new ReactionButton(player.DJ, emojies, () => true);
+    player.reactionController = new ReactionButton(player.DJ, getEmojies(player), () => true);
     message.client.SERVERS.set(message.guild.id, player);
   }
 };
+
+function getEmojies (player) {
+  return new Map()
+    .set('🇶', () => player.showQueue())
+    .set('🔁', () => player.toggleRepeat())
+    .set('⏮️', () => player.previous())
+    .set('⏯️', () => player.pauseResume())
+    .set('⏭️', () => player.next())
+    .set('🗑️', () => player.removeSong())
+    .set('🛑', () => player.close());
+}

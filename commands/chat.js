@@ -4,6 +4,7 @@ module.exports = {
     aliases: ['talk'],
     description: 'helps to delete multiple messages in the channel.',
     cooldown: 10,
+    incomplete: true,
     category: 'miscellaneous'
   },
   execute (message, args) {

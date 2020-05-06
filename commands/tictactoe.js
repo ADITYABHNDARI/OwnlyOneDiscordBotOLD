@@ -72,6 +72,7 @@ module.exports = {
     description: 'Let\'s you play the TicTacToe game!',
     usage: '<mention opponent>',
     args: true,
+    incomplete: true,
     category: 'game'
   },
 

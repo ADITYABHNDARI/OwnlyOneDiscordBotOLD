@@ -5,7 +5,7 @@ const { MessageEmbed } = require('discord.js');
 
 module.exports = {
   config: {
-    name: 'make-team',
+    name: 'maketeam',
     aliases: ['mt'],
     description: 'Helps to make team',
     // cooldown: 1,

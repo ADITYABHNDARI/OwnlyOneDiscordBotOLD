@@ -98,18 +98,20 @@ class MusicPlayer {
       return this.log('Queue finished!');
     }
 
-    const stream = await ytdl(song.url, { highWaterMark: 1 << 16, bitrate: this.getBitrate() });
+    const stream = await ytdl(song.url, { highWaterMark: 1 << 25, bitrate: this.getBitrate() });
     this.dispatcher = this.voiceConnection
-      .play(stream, { type: 'opus', fec: true, seek: 18000, volume: false/* , highWaterMark: 1 << 16 */ })
+      .play(stream, { type: 'opus', fec: true, volume: false/* , highWaterMark: 1 << 16 */ })
       .on('start', () => {
         this.isStopped = false;
         this.status = 'PLAYING';
         this.embed.setColor(COLOR.PLAYING);
       })
       .on('finish', () => {
-        this.isStopped = true;
         this.status = 'STOPPED';
-        this.play(this.getNextSong());
+        if (!this.isStopped) {
+          this.isStopped = true;
+          this.play(this.getNextSong());
+        }
       })
       .on('debug', info => showOnConsole('Dispatcher Info:', info, 'info'))
       .on('error', err => showOnConsole('Dispatcher Error:', err, 'error'));
@@ -124,7 +126,7 @@ class MusicPlayer {
     this.repeatMode = modes[modes.indexOf(this.repeatMode) + 1];
     const str = this.embed.footer.text.split(' | ');
     str[1] = str[1].slice(0, -3) + this.repeatMode;
-    this.DJ.edit(this.embed.setFooter(str.join(' | '), this.embed.footer.iconURL));
+    this.embed.setFooter(str.join(' | '), this.embed.footer.iconURL);
     this.playbackLog('Repeat Mode changed');
   }
 
@@ -184,6 +186,7 @@ class MusicPlayer {
 
   close () {
     this.playlist = [];
+    this.isStopped = true;
     this.dispatcher.end();
     this.reactionController.collector.stop();
     this.embed.setColor(COLOR.STOPPED);

@@ -7,6 +7,7 @@ module.exports = {
     // aliases: ['funny', 'whatis'],
     description: 'Defines a given query.',
     // args: true,
+    incomplete: true,
     cooldown: 5,
     usage: '<Time in minutes>',
     category: 'images'

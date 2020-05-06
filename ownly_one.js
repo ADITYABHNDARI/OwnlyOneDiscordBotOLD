@@ -12,6 +12,7 @@ const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('
 
 for (const file of commandFiles) {
   const command = require(`./commands/${file}`);
+  if (command.config.incomplete) continue;
   bot.commands.set(command.config.name, command);
 }
 
@@ -25,7 +26,7 @@ bot.once('ready', () => {
 });
 bot.once('reconnecting', () => {
   console.log('I\'m Reconnecting!');
-})
+});
 
 bot.on('guildMemberAdd', memberAdd);
 // bot.on('guildMemberRemove', memberLeave);
@@ -36,11 +37,11 @@ bot.on('message', message => {
   const args = message.content.slice(prefix.length).split(/ +/);
   const commandName = args.shift().toLowerCase();
 
-  // Temporary Code
+  /* // Temporary Code
   if (commandName == 'fake') {
     // const member = message.mentions.users.first() || message.member.user;
     return bot.emit(`guildMember${args[0] == 'kick' ? 'Remove' : 'Add'}`, message.member);
-  }
+  } */
 
   const command = bot.commands.get(commandName) || bot.commands.find(cmd => cmd.config.aliases && cmd.config.aliases.includes(commandName));
   if (!command) return message.reply(`that command either doesn't exist or may be incorrect!`);

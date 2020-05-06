@@ -3,6 +3,7 @@ module.exports = {
     name: 'prune',
     aliases: ['delete', 'remove'],
     description: 'helps to delete multiple messages in the channel.',
+    usage: '<number-of-messages>',
     cooldown: 10,
     category: 'moderation'
   },
@@ -20,7 +21,7 @@ module.exports = {
 
     message.channel.bulkDelete(amount, true)
       .then(messages => {
-        message.channel.send(`Successfully deleted ${messages.size} messages from the channel!`);
+        message.channel.send(`Successfully deleted ${messages.size} messages from the channel!`).then(msg => setTimeout(() => msg.delete(), 15000));
       })
       .catch(err => {
         console.error(err);

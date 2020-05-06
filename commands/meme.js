@@ -5,7 +5,7 @@ module.exports = {
   config: {
     name: 'meme',
     aliases: ['funny', 'whatis'],
-    description: 'Defines a given query.',
+    description: 'Posts a random meme.',
     // args: true,
     // cooldown: 2,
     usage: '',

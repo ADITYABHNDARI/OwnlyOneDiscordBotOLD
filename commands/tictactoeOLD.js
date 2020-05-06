@@ -81,6 +81,7 @@ module.exports = {
     usage: '<mention opponent>',
     disabled: true,
     args: true,
+    incomplete: true,
     category: 'game'
   },
 

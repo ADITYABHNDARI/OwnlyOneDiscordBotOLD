@@ -8,7 +8,7 @@ module.exports = {
     // aliases: ['delete', 'remove'],
     description: 'Polls',
     cooldown: 10,
-    usage: '<Enter poll Title here>',
+    usage: '<Enter poll Title here> [option 1][option 2][option *n*]',
     category: 'miscellaneous'
   },
 
