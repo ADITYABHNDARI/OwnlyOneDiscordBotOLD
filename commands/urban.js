@@ -17,6 +17,7 @@ module.exports = {
     const query = querystring.stringify({ term: args.join(' ') });
 
     const { list } = await fetch(`https://api.urbandictionary.com/v0/define?${query}`).then(response => response.json());
+    // const data = await fetch(`https://www.google.co.in/search?q=define%20${args.join(' ')}#cns=1`).then(response => response.json());
 
     const [answer] = list;
 
@@ -26,10 +27,9 @@ module.exports = {
       .setURL(answer.permalink)
       .addFields(
         { name: 'Definition', value: trim(answer.definition, 1024) },
-        { name: 'Example', value: trim(answer.example, 1024) },
-        { name: 'Rating', value: `${answer.thumbs_up} thumbs up. ${answer.thumbs_down} thumbs down.` }
+        { name: 'Example', value: trim(answer.example, 1024) }
       )
-      .setFooter(`${answer.thumbs_up} 👍 | ${answer.thumbs_down} 👎`);
+      .setFooter(`👍 ${answer.thumbs_up} | 👎 ${answer.thumbs_down}`);
 
     message.channel.send(embed);
   }
