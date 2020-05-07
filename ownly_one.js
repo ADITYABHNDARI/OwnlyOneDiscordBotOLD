@@ -21,7 +21,7 @@ const cooldowns = new Collection();
 bot.once('ready', () => {
   console.log('\n\nI\'m Online!');
   // bot.user.emoji('😝');
-  bot.user.setActivity('with Feelings!', { type: 'PLAYING' })
+  bot.user.setActivity('for you!', { type: 'WATCHING' })
     .catch(console.error);
 });
 bot.once('reconnecting', () => {
