@@ -1,9 +1,9 @@
-// require('dotenv').config();
+require('dotenv').config();
 const { showOnConsole } = require('./../Utilities.js');
 const MusicPlayer = require('./../classes/MusicPlayer.js');
 const ReactionButton = require('./../classes/ReactionButton.js');
 
-const YouTube = require("discord-youtube-api");
+const YouTube = require('discord-youtube-api');
 const youtube = new YouTube(process.env.YOUTUBE_API_KEY);
 
 class Song {
@@ -14,11 +14,8 @@ class Song {
     this.thumbnail = thumbnail;
     this.addedBy = addedBy;
   }
-  setEmbed (embed) {
-    return embed
-      .setTitle(this.title)
-      .setURL(this.url)
-      .setThumbnail(this.thumbnail)
+  setEmbed(embed) {
+    return embed.setTitle(this.title).setURL(this.url).setThumbnail(this.thumbnail);
   }
 }
 
@@ -31,24 +28,26 @@ module.exports = {
     usage: '<song-name> | <song-number-in-queue>',
     args: true,
     cooldown: 4,
-    category: 'music'
+    category: 'music',
   },
-  async execute (message, args) {
+  async execute(message, args) {
     const voiceChannel = message.member.voice.channel;
     if (!voiceChannel) {
       return message.reply('Lol! You forgot to join a Voice Channel.');
     } else if (message.guild.voiceConnection) {
-      return message.reply('I\'m already being used in a Voice Channel!');
+      return message.reply("I'm already being used in a Voice Channel!");
     }
 
-    const searchSong = query => new Promise((resolve, reject) => {
-      youtube.searchVideos(`${query}, music`)
-        .then(video => {
-          resolve(new Song(video, message.author));
-          message.delete();
-        })
-        .catch(reject);
-    });
+    const searchSong = query =>
+      new Promise((resolve, reject) => {
+        youtube
+          .searchVideos(`${query}, music`)
+          .then(video => {
+            resolve(new Song(video, message.author));
+            message.delete();
+          })
+          .catch(reject);
+      });
     let player = message.client.SERVERS.get(message.guild.id);
 
     if (player) {
@@ -63,8 +62,9 @@ module.exports = {
       return;
     }
 
-    if (!message.guild.me.hasPermission(this.config.permissions)) {
-      return message.reply('I don\'t have permissions to Join and Speak in your Voice Channel.');
+    const havePermission = message.guild.me.hasPermission(this.config.permissions);
+    if (!havePermission) {
+      return message.reply("I don't have permissions to Join and Speak in your Voice Channel.");
     }
 
     player = new MusicPlayer(message.guild.id, message.channel, voiceChannel);
@@ -85,10 +85,10 @@ module.exports = {
 
     player.reactionController = new ReactionButton(player.DJ, getEmojies(player), () => true);
     message.client.SERVERS.set(message.guild.id, player);
-  }
+  },
 };
 
-function getEmojies (player) {
+function getEmojies(player) {
   return new Map()
     .set('🇶', () => player.showQueue())
     .set('🔁', () => player.toggleRepeat())

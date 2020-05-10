@@ -1,133 +1,167 @@
-const { MessageEmbed, MessageAttachment } = require('discord.js');
+const { MessageEmbed, MessageAttachment } = require( 'discord.js' );
+const ReactionButton = require( './../classes/ReactionButton.js' );
+const { emojies } = require( './../Utilities.js' );
 
-const MGC = 3;
-const react = {
-  positive: '👍',
-  negative: '👎',
-  nums: ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣']
-}
+const SIZE = 3;
 
 class Mark {
-  constructor(symbol, value) {
+  constructor( symbol, value ) {
     this.symbol = symbol;
     this.value = value;
   }
 }
 
-const pane = new Mark('⬛', 0);
-const cross = new Mark('❌', 1);
-const nought = new Mark('⭕', 2);
+const PANE = emojies.pane, CROSS = emojies.cross, NOUGHT = emojies.nought;
 
 class TicTacToe {
-  constructor(me, opponent, embedMessage) {
-    this.arena = Array(MGC * MGC).fill(pane);
-    this.active = cross;
+  constructor( me, opponent, embedMessage ) {
+    this.moves = 0;
+    this.arena = Array( SIZE * SIZE ).fill( PANE );
+    this.embed = new MessageEmbed()
+      .setTitle( 'TicTacToe' )
+      .setDescription( `${ me.username } v/s ${ opponent.username }` );
+    this.embedMessage = embedMessage;
+    this.reactionController = null;
 
+    if ( Math.random() < 0.5 ) {
+      [ me.mark, opponent.mark ] = [ CROSS, NOUGHT ];
+      this.active = me;
+    } else {
+      [ me.mark, opponent.mark ] = [ NOUGHT, CROSS ];
+      this.active = opponent;
+    }
     this.me = me;
     this.opponent = opponent;
-    this.embedMessage = embedMessage;
-
     this.drawBoard();
+    this.embedMessage.edit( this.embed.setFooter( `**${ this.active.username }** Won the toss!` ) );
   }
 
   drawBoard () {
-    let edited = this.embedMessage.embeds[0].spliceFields(0, 1, {
-      name: '\u200b', value: this.toString()
-    });
-
-    this.embedMessage.edit(edited);
+    this.embed.spliceFields( 0, 1, {
+      name: '\u200b',
+      value: toString( this.arena ),
+    } );
   }
 
-  toString () {
-    let str = '';
-    for (let i = 0, s = 0; i < MGC; i++) {
-      for (let j = 0; j < MGC; j++) {
-        str += this.arena[s++].symbol;
-      }
-      str += '\n';
+  placeMark ( at ) {
+    this.moves++;
+    this.arena[ at ] = this.active.mark;
+    this.drawBoard();
+    if ( this.moves < 5 );
+    else if ( this.checkWin( at ) ) {
+      this.embedMessage.channel.send( `Aah! Good one **${ this.active.username }**, you WON.` );
+      return this.terminate( `${ this.active.username } Wins!` );
+    } else if ( this.moves > 8 ) {
+      return this.terminate( 'Game Drawn!' );
     }
-
-    return str;
-  }
-
-  placeMark (at) {
-    this.arena[at] = this.active;
+    this.nextTurn();
   }
 
   nextTurn () {
-    this.active = this.active == cross ? nought : cross;
+    this.active = this.active == this.me ? this.opponent : this.me;
+    this.embedMessage.edit( this.embed.setFooter( `${ this.active.username }'s turn` ) );
   }
-}
 
-class ReactionController {
-  constructor() {
+  checkWin ( index ) {
+    const hori = Math.floor( index / SIZE ) * SIZE;
+    return (
+      this.loopThrough( hori, hori + SIZE, 1 ) || // Horizontally
+      this.loopThrough( index % SIZE, SIZE * SIZE, SIZE ) || // Vertically
+      this.loopThrough( 0, SIZE * SIZE, SIZE + 1 ) || // Left Slope
+      this.loopThrough( SIZE - 1, SIZE * SIZE - SIZE + 1, SIZE - 1 ) // Right Slope
+      // diagnols()
+    );
+  }
+  terminate ( reason ) {
+    this.embedMessage.reactions.removeAll();
+    this.reactionController.collector.stop();
+    this.embedMessage.edit( this.embed.setFooter( reason ) );
+  }
 
+  /**
+   * @private
+   */
+  loopThrough ( init, range, update ) {
+    while ( this.arena[ init ] == this.active.mark && init < range ) init += update;
+
+    return init >= range;
   }
 }
 
 module.exports = {
   config: {
     name: 'tictactoe',
-    aliases: ['ttt'],
-    description: 'Let\'s you play the TicTacToe game!',
-    usage: '<mention opponent>',
+    aliases: [ 'ttt' ],
+    description: "Let's you play the TicTacToe game!",
+    usage: '<@opponent>',
     args: true,
-    incomplete: true,
-    category: 'game'
+    // incomplete: true,
+    category: 'game',
   },
 
-  async execute (message, args) {
+  async execute ( message, args ) {
     const opponent = message.mentions.users.first();
-    if (!opponent) {
-      return message.reply('You need to mention someone to play with!');
+    if ( !opponent ) {
+      return message.reply( 'You need to mention someone to play with!' );
     }
 
-    const challenge = await message.channel.send(`Hey ${opponent}, ${message.author} has invited you for a TicTacToe Game.`);
-    challenge.react(react.positive).then(() => challenge.react(react.negative));
+    message.channel
+      .send( `Hey **${ opponent.username }**, do you accept the TicTacToe challenge?` )
+      .then( challenge => {
+        // challengeAccepted( message, opponent ); // temporary
+        const awaitFilter = ( reaction, user ) => {
+          if ( user == opponent ) return true;
+          !user.bot && reaction.users.remove( user );
+        };
 
-    const awaitFilter = (reaction, user) => {
-      if (user.bot) return false;
-      if (user == opponent || user == message.author) return true;
-      reaction.users.remove(user);
-    };
+        challenge.react( emojies.thumbup ).then( () => challenge.react( emojies.thumbdown ) );
+        challenge
+          .awaitReactions( awaitFilter, { max: 1, time: 60000 } )
+          .then( collected => {
+            const reaction = collected.first();
+            if ( reaction.emoji.name === emojies.thumbup ) {
+              challengeAccepted( message, opponent );
+            } else if ( reaction.emoji.name === emojies.thumbdown ) {
+              message.channel.send( `**${ opponent.username }** declined the challenge!` );
+            }
+          } )
+          .catch( collected => {
+            message.channel.send( `**${ opponent.username }** didn't responded, so the game is aborted!` );
+          } );
+      } );
+  },
+};
 
-    new Promise((accept, decline) => {
-      challenge.awaitReactions(awaitFilter, { max: 1, time: 60000 })
-        .then(collected => {
-          const reaction = collected.first();
-          accept();
-          if (reaction.emoji.name === react.positive) {
-            accept();
-          } else if (reaction.emoji.name === react.negative) {
-            decline();
-          }
-        }).catch(collected => {
-          message.channel.send('The game is aborted!');
-        });
-    }).then(async () => {
-      message.reply(`**${opponent.username}** has accepted your TicTacToe request!`);
-      const embed = new MessageEmbed()
-        .setTitle('TicTacToe')
-        .addField(`field ${react.pane}\n, ${react.cross}`, `value ${react.nought}\n ${react.nought}`);
-      const embedMessage = await message.channel.send(embed);
-      for (let i = 0; i < MGC; i++) {
-        await embedMessage.react(react.nums[i]);
+async function challengeAccepted ( message, opponent ) {
+  const embedMessage = await message.channel.send( `**${ opponent.username }** accepted the challenge!` );
+
+  const ticTacToe = new TicTacToe( message.author, opponent, embedMessage );
+  ticTacToe.reactionController = new ReactionButton( embedMessage, getEmojies( ticTacToe ),
+    ( reaction, user ) => {
+      // return true;
+      if ( user.id == ticTacToe.active.id ) {
+        reaction.remove();
+        return true;
       }
-      const ticTacToe = new TicTacToe(message.author, opponent, embedMessage);
-    }).catch(() => {
-      message.reply(`**${opponent.username}** has declined your TicTacToe request!`);
-    })
-  }
+    }
+  );
 }
 
-function cloneCanvas (oldCanvas) {
-  let newCanvas = document.createElement('canvas');
-  let context = newCanvas.getContext('2d');
+function getEmojies ( ticTacToe ) {
+  const set = new Map();
+  for ( let i = 0; i < SIZE * SIZE; i++ )
+    set.set( emojies[ i + 1 ], () => ticTacToe.placeMark( i ) );
+  return set;
+}
 
-  newCanvas.width = oldCanvas.width;
-  newCanvas.height = oldCanvas.height;
+function toString ( arena ) {
+  let str = '';
+  for ( let i = 0, s = 0; i < SIZE; i++ ) {
+    for ( let j = 0; j < SIZE; j++ ) {
+      str += arena[ s++ ];
+    }
+    str += '\n';
+  }
 
-  context.drawImage(oldCanvas, 0, 0);
-
-  return newCanvas;
+  return str;
 }
