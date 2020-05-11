@@ -1,13 +1,23 @@
-require( 'dotenv/config' );
+// require( 'dotenv/config' );
 const fs = require( 'fs' );
-const { Client, Collection } = require( 'discord.js' );
+const {
+  Client,
+  Collection
+} = require( 'discord.js' );
 
 const bot = new Client();
 bot.commands = new Collection();
 bot.SERVERS = new Collection();
 
+/* const firebase = require( 'firebase/app' );
+const admin = require( 'firebase-admin' );
+const FieldValue = admin.firestore.FieldValue;
+const serviceAccount = require( './ownly-one-private-key.json' );
 
-
+admin.initializeApp( {
+  credential: admin.credential.cert( serviceAccount )
+} );
+bot.database = admin.firestore(); */
 
 // Loading Bot Commands
 fs.readdir( './commands', ( err, files ) => {
@@ -33,7 +43,9 @@ fs.readdir( './events', ( err, files ) => {
 bot.once( 'ready', () => {
   console.log( "\n\nI'm Online!" );
   // bot.user.emoji('😝');
-  bot.user.setActivity( 'for you!', { type: 'WATCHING' } ).catch( console.error );
+  bot.user.setActivity( 'for you!', {
+    type: 'WATCHING'
+  } ).catch( console.error );
 } );
 bot.once( 'reconnecting', () => {
   console.log( "I'm Reconnecting!" );
