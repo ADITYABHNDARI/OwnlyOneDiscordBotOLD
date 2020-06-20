@@ -12,6 +12,7 @@ module.exports = message => {
   const [, matchedPrefix] = message.content.match( prefixRegex );
   const args = message.content.slice( matchedPrefix.length ).trim().split( / +/ );
   const commandName = args.shift().toLowerCase();
+
   if ( commandName == 'fake' ) {
     const member = message.mentions.members.first() || message.member;
     return message.client.emit( `guildMember${ args[0] == 'kick' ? 'Remove' : 'Add' }`, member );
