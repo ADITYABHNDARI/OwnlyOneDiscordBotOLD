@@ -1,5 +1,6 @@
 const { createCanvas, loadImage } = require( 'canvas' );
 const { MessageAttachment } = require( 'discord.js' );
+const path = require( 'path' );
 
 module.exports = async member => {
   const welcomeChannel = member.guild.channels.cache.find( channel => channel.topic && channel.topic.startsWith( 'Ownly_One_Welcome' ) );
@@ -10,7 +11,7 @@ module.exports = async member => {
   const canvas = createCanvas( cw, ch );
   const pen = canvas.getContext( '2d' );
 
-  const background = await loadImage( './images/wallpaper.png' );
+  const background = await loadImage( path.join( __dirname, './../assets/images/wallpaper.png' ) );
   pen.drawImage( background, 0, 0, cw, ch );
   pen.strokeStyle = '#ffffff';
   pen.strokeRect( 0, 0, cw, ch );
@@ -21,7 +22,7 @@ module.exports = async member => {
     offset: 15,
     get center () {
       return this.offset + this.size / 2;
-    }
+    },
   };
 
   pen.fillStyle = '#ffffff33';

@@ -1,9 +1,7 @@
-// require( 'dotenv/config' );
+const { BOT_TOKEN } = require( './config.js' );
 const fs = require( 'fs' );
-const {
-  Client,
-  Collection
-} = require( 'discord.js' );
+const fetch = require( 'node-fetch' );
+const { Client, Collection, MessageEmbed } = require( 'discord.js' );
 
 const bot = new Client();
 bot.commands = new Collection();
@@ -20,37 +18,43 @@ admin.initializeApp( {
 bot.database = admin.firestore(); */
 
 // Loading Bot Commands
-fs.readdir( './commands', ( err, files ) => {
+fs.readdir( './api/commands', ( err, files ) => {
   if ( err ) return console.error;
   for ( const file of files ) {
     if ( !file.endsWith( '.js' ) ) return;
-    const command = require( `./commands/${ file }` );
+    const command = require( `./api/commands/${ file }` );
     if ( command.config.incomplete ) continue;
     bot.commands.set( command.config.name, command );
   }
 } );
 
 // Loading Bot Events
-fs.readdir( './events', ( err, files ) => {
+fs.readdir( './api/events', ( err, files ) => {
   if ( err ) return console.error;
   for ( const file of files ) {
     if ( !file.endsWith( '.js' ) ) return;
-    const event = require( `./events/${ file }` );
+    const event = require( `./api/events/${ file }` );
     bot.on( file.slice( 0, -3 ), event.bind( bot ) );
   }
 } );
 
 bot.once( 'ready', () => {
-  console.log( "\n\nI'm Online!" );
+  console.log( "\nI'm Online!\n--------------------------------\n" );
   // bot.user.emoji('😝');
-  bot.user.setActivity( 'for you!', {
-    type: 'WATCHING'
-  } ).catch( console.error );
-} );
-bot.once( 'reconnecting', () => {
-  console.log( "I'm Reconnecting!" );
+  bot.user.setActivity( 'for Crashments!', { type: 'WATCHING' } ).catch( console.error );
+
+  setInterval( postMeme, 1500000 ); // 25 mins
 } );
 
 process.on( 'unhandledRejection', error => console.error( 'Uncaught Promise Rejection', error ) );
 
-bot.login( process.env.BOT_TOKEN );
+bot.login( BOT_TOKEN );
+
+function postMeme () {
+  // const memeChannel = member.guild.channels.cache.find( channel => channel.topic && channel.topic.startsWith( 'Ownly_One_Memes' ) );
+  const memeChannels = bot.channels.cache.filter( channel => channel.topic && channel.topic.startsWith( 'Ownly_One_Memes' ) );
+
+  for ( const channel of [...memeChannels.values()] ) {
+    bot.commands.get( 'meme' ).execute( { channel } );
+  }
+}

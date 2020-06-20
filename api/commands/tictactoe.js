@@ -1,8 +1,6 @@
 const { MessageEmbed, MessageAttachment } = require( 'discord.js' );
 const ReactionButton = require( './../classes/ReactionButton.js' );
-const {
-  emojies
-} = require( './../Utilities.js' );
+const { emojies } = require( './../Utilities.js' );
 
 const SIZE = 3;
 const timeout = 20000;
