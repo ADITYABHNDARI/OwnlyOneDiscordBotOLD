@@ -1,20 +1,20 @@
 const { Collection } = require( 'discord.js' );
 const Cooldown = require( './../classes/Cooldown.js' );
-const { prefix } = require( './../config.json' );
+const { BOT_PREFIX } = require( './../../config.js' );
 
 const cooldowns = new Collection();
 const escapeRegex = str => str.replace( /[.*+?^${}()|[\]\\]/g, '\\$&' );
 
 module.exports = message => {
-  const prefixRegex = new RegExp( `^(<@!?${ message.client.user.id }>|${ escapeRegex( prefix ) })\\s*` );
+  const prefixRegex = new RegExp( `^(<@!?${ message.client.user.id }>|${ escapeRegex( BOT_PREFIX ) })\\s*` );
   if ( !prefixRegex.test( message.content ) ) return;
 
-  const [ , matchedPrefix ] = message.content.match( prefixRegex );
+  const [, matchedPrefix] = message.content.match( prefixRegex );
   const args = message.content.slice( matchedPrefix.length ).trim().split( / +/ );
   const commandName = args.shift().toLowerCase();
   if ( commandName == 'fake' ) {
-    // const member = message.mentions.users.first() || message.member.user;
-    return message.client.emit( `guildMember${ args[ 0 ] == 'kick' ? 'Remove' : 'Add' }`, message.member );
+    const member = message.mentions.members.first() || message.member;
+    return message.client.emit( `guildMember${ args[0] == 'kick' ? 'Remove' : 'Add' }`, member );
   }
   const command = message.client.commands.get( commandName ) ||
     message.client.commands.find( cmd => cmd.config.aliases && cmd.config.aliases.includes( commandName ) );

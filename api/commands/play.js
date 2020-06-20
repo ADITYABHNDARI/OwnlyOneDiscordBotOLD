@@ -1,19 +1,14 @@
-// require( 'dotenv/config' );
+const { YOUTUBE_API_KEY } = require( './../../config.js' );
 const { MessageEmbed } = require( 'discord.js' );
 const { showOnConsole } = require( './../Utilities.js' );
 const MusicPlayer = require( './../classes/MusicPlayer.js' );
 // const ReactionButton = require( './../classes/ReactionButton.js' );
 
 const YouTube = require( 'discord-youtube-api' );
-const youtube = new YouTube( process.env.YOUTUBE_API_KEY );
+const youtube = new YouTube( YOUTUBE_API_KEY );
 
 class Song {
-  constructor( {
-    title,
-    url,
-    length,
-    thumbnail
-  }, addedBy ) {
+  constructor( { title, url, length, thumbnail }, addedBy ) {
     this.title = title;
     this.url = url;
     this.length = length;
@@ -49,7 +44,7 @@ module.exports = {
         youtube
           .searchVideos( `${ query }, music` )
           .then( video => {
-            resolve( new Song( video, message.author ) );
+            resolve( new Song( video, message.member ) );
             message.delete();
           } )
           .catch( reject );
@@ -68,27 +63,20 @@ module.exports = {
       return;
     }
 
-    // console.log( 'Joinable: ', voiceChannel.joinable, "\nSpeakable: ", voiceChannel.speakable );
-    const havePermission = message.guild.me.hasPermission( this.config.permissions );
-    if ( !havePermission ) {
-      return message.reply( "I don't have permissions to Join and Speak in your Voice Channel." );
+    console.log( 'Joinable: ', voiceChannel.joinable, "\nSpeakable: ", voiceChannel.speakable );
+
+    player = new MusicPlayer( message );
+    await player.start();
+
+    if ( voiceChannel.speakable ) {
+      searchSong( args.join( ' ' ) )
+        .then( song => player.addSong( song ) )
+        .catch( err => showOnConsole( 'Searching Error:', err ) );
+    } else {
+      return player.textChannel.send( `**${ message.member.displayName }**, It seems like I don't have permission to SPEAK in this Voice Channel!` );
     }
 
-    try {
-      const embedMessage = await message.channel.send( new MessageEmbed() );
-      player = new MusicPlayer( voiceChannel, embedMessage );
-      player.voiceConnection = await voiceChannel.join();
-    } catch ( err ) {
-      message.channel.send( err );
-      return showOnConsole( 'VC Join:', err );
-    }
 
-    searchSong( args.join( ' ' ) )
-      .then( song => player.addSong( song ) )
-      .catch( err => showOnConsole( 'Searching Error:', err ) );
-
-    player.voiceConnection.on( 'disconnect', () => player.isStopped || player.close() );
-    player.voiceConnection.on( 'reconnecting', () => console.log( 'Im vc reconnetn' ) );
     // player.voiceConnection.on( 'debug', message => showOnConsole( 'Connection Debug Information:\n' + message ) );
 
     message.client.SERVERS.set( message.guild.id, player );

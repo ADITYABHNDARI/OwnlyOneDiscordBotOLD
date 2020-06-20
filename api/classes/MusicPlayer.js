@@ -3,27 +3,16 @@ const ytdl = require( 'ytdl-core-discord' );
 const { MessageEmbed } = require( 'discord.js' );
 const ReactionButton = require( './../classes/ReactionButton.js' );
 
-
 const COLOR = {
   PAUSE: '#ffff00',
   PLAYING: '#00ff00',
   STOPPED: '#ff2222'
 };
 
+const BITRATE = 64, VOLUME = 1;
+
 class MusicPlayer {
-  constructor( voiceChannel, message ) {
-    this.serverID = message.guild.id;
-    this.textChannel = message.channel;
-    this.voiceChannel = voiceChannel;
-    this.voiceConnection = null;
-    this.embed = message.embeds[0].setColor( COLOR.PLAYING );
-    this.volume = 1;
-    this._bitrate = 64;
-    this.DJ = message;
-    this.reactionController = new ReactionButton( message, getEmojies( this ),
-      ( reaction, user ) => voiceChannel.members.has( user.id )
-      // reaction.message.member.voice.channel.members.get( user.id )
-    );
+  constructor( message ) {
     this.currentSongIndex = -1;
     this.hasSkipped = false;
     this.playlist = [];
@@ -31,10 +20,35 @@ class MusicPlayer {
     this.repeatMode = 'OFF';
     this.dispatcher = null;
     this.status = null;
+
+    this.embed = new MessageEmbed().setColor( COLOR.PLAYING ).setTitle( 'Loading...' );
+    this.serverID = message.guild.id;
+    this.textChannel = message.channel;
+    this.voiceChannel = message.member.voice.channel;
   }
+
+  start () {
+    return new Promise( ( resolve, reject ) => {
+      this.voiceChannel.join()
+        .then( async connection => {
+          this.voiceConnection = connection;
+          connection.on( 'disconnect', () => this.destroy() );
+          connection.on( 'reconnecting', () => console.log( 'Im vc reconnetn' ) );
+          this.DJ = await this.textChannel.send( this.embed );
+          this.reactionController = new ReactionButton( this.DJ, getEmojies( this ),
+            ( reaction, user ) => this.voiceChannel.members.has( user.id )
+          );
+          resolve();
+        } )
+        .catch( err => {
+          this.textChannel.send( `**${ 'message.member.displayName' }**, I don't have permission to Join that Voice Channel!` );
+        } );
+    } );
+  }
+
   getBitrate () {
     const vcBitrate = this.voiceChannel.bitrate;
-    return vcBitrate < this._bitrate ? vcBitrate : this._bitrate;
+    return vcBitrate < BITRATE ? vcBitrate : BITRATE;
   }
 
   get queueList () {
@@ -49,7 +63,9 @@ class MusicPlayer {
     return !this.playlist.length;
   }
   get username () {
-    return this.reactionController.user ? this.reactionController.user.username : '';
+    const memberName = this.voiceChannel.members.get( this.reactionController.user.id ).displayName;
+    // return  ? this.reactionController.user.username : '';
+    return memberName;
   }
   get currentPlaybackPosition () {
     return Math.round( this.dispatcher.streamTime / 1000 );
@@ -88,7 +104,7 @@ class MusicPlayer {
       this.currentSongIndex++;
       this.play( song );
     }
-    this.embed.setAuthor( `${ song.addedBy.username } added a new Song!` );
+    this.embed.setAuthor( `${ song.addedBy.displayName } added a new Song!` );
     this.showQueue();
   }
 
@@ -120,9 +136,9 @@ class MusicPlayer {
       .on( 'debug', info => showOnConsole( 'Dispatcher Info:', info, 'info' ) )
       .on( 'error', err => showOnConsole( 'Dispatcher Error:', err, 'error' ) );
 
-    this.dispatcher.setVolumeLogarithmic( this.volume );
+    this.dispatcher.setVolumeLogarithmic( VOLUME );
     // this.dispatcher.setFEC(true);
-    this.DJ.edit( song.setEmbed( this.embed ).setFooter( `Added By: ${ song.addedBy.username } | Repeat: ${ this.repeatMode } | Duration: ${ song.length }`, song.addedBy.displayAvatarURL( { format: 'jpg', dynamic: true } ) ) );
+    this.DJ.edit( song.setEmbed( this.embed ).setFooter( `Added By: ${ song.addedBy.displayName } | Repeat: ${ this.repeatMode } | Duration: ${ song.length }`, song.addedBy.user.displayAvatarURL( { format: 'jpg', dynamic: true } ) ) );
   }
 
   toggleRepeat () {
@@ -188,13 +204,18 @@ class MusicPlayer {
     this.playbackLog( 'Skipped' );
   }
 
-  close () {
+  stop () {
     this.playlist = [];
     this.isStopped = true;
     this.dispatcher.end();
-    this.reactionController.collector.stop();
     this.embed.setColor( COLOR.STOPPED );
     this.playbackLog( 'Stopped' );
+  }
+
+  destroy () {
+    this.stop();
+    this.reactionController.collector.stop();
+    this.DJ.reactions.removeAll();
     this.DJ.client.SERVERS.delete( this.serverID );
     setTimeout( () => this.DJ.delete(), 60000 );
   }
@@ -227,5 +248,5 @@ function getEmojies ( player ) {
     .set( '⏯️', () => player.pauseResume() )
     .set( '⏭️', () => player.next() )
     .set( '🗑️', () => player.removeSong() )
-    .set( '🛑', () => player.close() );
+    .set( '🛑', () => player.stop() );
 }
